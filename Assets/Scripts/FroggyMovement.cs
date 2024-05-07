@@ -1,9 +1,13 @@
-using System.Collections;
-using System.Collections.Generic;
+using System;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class FroggyMovement : MonoBehaviour
 {
+    [SerializeField] private MovementButton _leftMovementButton;
+    [SerializeField] private MovementButton _rightMovementButton;
+    [SerializeField] private Button _jumpButton;
+
     private Rigidbody2D rigb; //make variable to avoid calling GetComponent again and again
     private BoxCollider2D boxcoll;
     private SpriteRenderer spriter;
@@ -18,7 +22,21 @@ public class FroggyMovement : MonoBehaviour
     private enum MovementState { idle, running, jumping, falling } //finite set of animation states, convenient since animations are mutually exclusive
 
     [SerializeField] private AudioSource jumpSound;
-    // Start is called before the first frame update
+
+    private void OnEnable()
+    {
+        _leftMovementButton.OnPressHandling += OnLeftMovementButtonPressing;
+        _rightMovementButton.OnPressHandling += OnRightMovementButtonPressing;
+        _jumpButton.onClick.AddListener(Jump);
+    }
+
+    private void OnDisable()
+    {
+        _leftMovementButton.OnPressHandling -= OnLeftMovementButtonPressing;
+        _rightMovementButton.OnPressHandling -= OnRightMovementButtonPressing;
+        _jumpButton.onClick.RemoveListener(Jump);
+    }
+
     private void Start()
     {
         rigb = GetComponent<Rigidbody2D>();
@@ -31,17 +49,35 @@ public class FroggyMovement : MonoBehaviour
     private void Update()
     {
         dirX = Input.GetAxisRaw("Horizontal"); //from Input Manager of Unity; float for adaptability for joysticks
-        rigb.velocity = new Vector2(dirX * moveSpeed, rigb.velocity.y); /*instead of 0, keep position of y the same
+        Move(); /*instead of 0, keep position of y the same
                                                                  '* dirX' saves time since dirX gives pos/neg value, efficient*/
 
         if (Input.GetButtonDown("Jump") && IsGrounded()) //from Input Manager of Unity
         {
-            rigb.velocity = new Vector2(rigb.velocity.x, jumpForce); //Vector2 since 2D game
-            jumpSound.Play();
+            Jump();
         }
 
+        //UpdateAnimationState();
+    }
+
+    private void OnLeftMovementButtonPressing()
+    {
+        dirX = -1;
+        Move();
+    }
+
+    private void OnRightMovementButtonPressing()
+    {
+        dirX = 1;
+        Move();
+    }
+
+    private void Move()
+    {
+        rigb.velocity = new Vector2(dirX * moveSpeed, rigb.velocity.y);
         UpdateAnimationState();
     }
+
     private void UpdateAnimationState() //method to change inbetween animations, depends on: 'state' value
     {
         MovementState state;
@@ -76,5 +112,11 @@ public class FroggyMovement : MonoBehaviour
     {
         return Physics2D.BoxCast(boxcoll.bounds.center, boxcoll.bounds.size, 0f, Vector2.down, .1f, jumpingGround); /*bounds.center & bounds.size - copy objects box, 0f - no rotation,
                                                                                                             Vector2.down, .1f - move the new box down by .1f*/
+    }
+
+    public void Jump()
+    {
+        rigb.velocity = new Vector2(rigb.velocity.x, jumpForce); //Vector2 since 2D game
+        jumpSound.Play();
     }
 }
